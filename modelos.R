@@ -39,7 +39,7 @@ library(forecast)
 ################################
 
 ##Leemos todos los datos
-datos        <- fread("gas_natural.csv")
+datos        <- fread("./gas_natural.csv")
 datos$PIB    <- readr::parse_number(datos$PIB) 
 datos$Anio   <- as.numeric(datos$Anio)
 names(datos) <- c("cat", "rama", "anio", "demanda", "precio_gas", "precio_combu","pib", "efi")
@@ -289,7 +289,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #--------------------Celulosa y papel----------------   
 #Serie tiempo
@@ -318,7 +318,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #-------------------Cemento y vidrio------------------
 sector <-datos[rama=='Cemento y vidrio',]
@@ -374,8 +374,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
-
+accuracy(fit)
 #------------------Metales básicos-----------------------
 sector <-datos[rama=='Metales básicos',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
@@ -402,7 +401,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #------------------------Minería y Productos metálicos, equipo eléctrico y de transporte--------------------
 sector <-datos[rama=='Minería y Productos metálicos, equipo eléctrico y de transporte',]
@@ -430,7 +429,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #--------------------Productos de minerales no metálicos-------------------
 sector <-datos[rama=='Productos de minerales no metálicos',]
@@ -458,7 +457,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #-----------------------------------------Química------------------------------------
 sector <-datos[rama=='Química',]
@@ -486,7 +485,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #-----------------------------------------Textil----------------------------------------
 sector <-datos[rama=='Textil',]
@@ -514,7 +513,7 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
 #------------------------------Resto---------------------------------
 sector <-datos[rama=='Resto',]
@@ -542,5 +541,5 @@ dev.off()
 #Error
 error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+accuracy(fit)
 
