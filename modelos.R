@@ -33,6 +33,14 @@ library(tseries)
 library(lazyeval)
 library(forecast)
 
+################################
+# Creación carpetas resultados
+################################
+system("mkdir output")
+system("mkdir output/graphs")
+system("mkdir output/graphs/arima")
+system("mkdir output/graphs/exploratorio")
+system("mkdir output/graphs/mineria")
 
 ################################
 # Lectura de datos
@@ -46,8 +54,38 @@ names(datos) <- c("cat", "rama", "anio", "demanda", "precio_gas", "precio_combu"
 datos        <- datos[,-c(1,8), with = FALSE]
 
 ## Boxplot de todos los datos
-png("./output/graphs/box_plot_all.png")
+png("./output/graphs/exploratorio/box_plot_all.png")
 boxplot(scale(datos[,-1:-2, with = FALSE]), col="blue", main="Boxplot de variables estandarizadas")
+dev.off()
+
+################################
+# Analisis exploratorio 
+################################
+
+sector <-datos[rama=='Alimentos',]
+alimentos <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Celulosa y papel',]
+papel <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Cemento y vidrio',]
+cem_vid <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Cerveza y malta',]
+cerv <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Metales básicos',]
+met <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Minería y Productos metálicos, equipo eléctrico y de transporte',]
+min <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Productos de minerales no metálicos',]
+nomet <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Química',]
+quim <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Textil',]
+textil <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+sector <-datos[rama=='Resto',]
+resto <- ts(sector$demanda, start=2006, end=2030, frequency=1)
+
+png("./output/graphs/exploratorio/time_series.png")
+ts.plot(alimentos, papel, cem_vid, cerv, met, min, nomet, quim, textil, resto, gpars= list(col=rainbow(10)), ylab="Demanda (millones ft cúbicos)", xlab="Tiempo", main="Demanda de gas natural por subsector industrial (IMP) ")
+legend("bottomright", legend = c("alimentos", "papel", "cem&vidrio", "cerveza", "metales", "mineria", "no_metales", "química", "textil", "resto"), col = rainbow(10), lty = 1)
 dev.off()
 
 
@@ -76,9 +114,11 @@ pib.lag <- datos[, shift(pib, n=1, fill=NA, type="lag"), by = rama]
 datos$pib.lag <- pib.lag$V1
 
 
-#####################################
+########################################################
+########################################################
 # Modelo Mineria de datos (conjunto)
-#####################################
+########################################################
+########################################################
 
 #Ramo Variable dummie
 datos$rama <- as.factor(datos$rama)
@@ -91,178 +131,401 @@ dwtest(demanda ~ demanda.lag + precio_gas + precio_gas.lag + precio_combu + prec
 
 #Metricas de error
 mse <- function(sm) 
-  mean(sm$residuals^2)
+  sqrt(mean(sm$residuals^2))
 error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
 
-#--------------------------
-# Resultados Modelo conjunto
-#---------------------------
-
+#===========================================
 #Alimentos
+#===========================================
 sector <-datos[rama=='Alimentos',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_alimentos.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_quimica.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_quimica.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#MODELO
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[1:25], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_alimentos.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para Alimentos", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[1:10]^2)
+
+#Resultados
+error2 <- sqrt(mean(mod_regresion$residuals[1:10]^2))
 sprintf("El error en 2006-2015 para Alimentos de este modelo es: %s", error2)
-error3 <- mean(mod_regresion$residuals[11:25]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[11:25]^2))
 sprintf("El error en 2016-2030 para Alimentos de este modelo es: %s", error3)
 accuracy(mod_regresion)
+tabla_res_tot <- c()
+tabla_res <-data.frame("Sector"='Alimentos', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+#===========================================
 #Celulosa y papel
+#===========================================
 sector <-datos[rama=='Celulosa y papel',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_papel.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_papel.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_papel.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[26:50], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_cel.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para Celulosa y papel", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[26:35]^2)
-sprintf("El error en 2006-2015 para celulosa y papel de este modelo es: %s", error2)
-error3 <- mean(mod_regresion$residuals[36:50]^2)
-sprintf("El error en 2016-2030 para celulosa y papel de este modelo es: %s", error3)
-accuracy(mod_regresion)
 
+#Resultados
+error2 <- sqrt(mean(mod_regresion$residuals[26:35]^2))
+sprintf("El error en 2006-2015 para celulosa y papel de este modelo es: %s", error2)
+error3 <- sqrt(mean(mod_regresion$residuals[36:50]^2))
+sprintf("El error en 2016-2030 para celulosa y papel de este modelo es: %s", error3)
+tabla_res <-data.frame("Sector"='Celulosa y papel', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
 #Cemento y vidrio
+#===========================================
 sector <-datos[rama=='Cemento y vidrio',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_cemento.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_cemento.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_cemento.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[51:75], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_cem.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para Cemento y vidrio", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[51:60]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[51:60]^2))
 sprintf("El error en 2006-2015 para cemento y vidrio de este modelo es: %s", error2)
-error3 <- mean(mod_regresion$residuals[61:75]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[61:75]^2))
 sprintf("El error en 2016-2030 para cemento y vidrio de este modelo es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Cemento y vidrio', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+#===========================================
 #Cerveza y malta
+#===========================================
 sector <-datos[rama=='Cerveza y malta',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_cerveza.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_cerveza.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_cerveza.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[76:100], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_cer.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para cerveza y malta", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[76:85]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[76:85]^2))
 sprintf("El error en 2006-2015 de este modelo para cerveza y malta es: %s", error2)
-error3 <- mean(mod_regresion$residuals[86:100]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[86:100]^2))
 sprintf("El error en 2016-2030 de este modelo para cerveza y malta es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Cerveza y malta', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+
+#===========================================
 #Metales básicos
+#===========================================
 sector <-datos[rama=='Metales básicos',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_metales.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_metales.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_metales.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[101:125], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_metbas.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para metales básicos", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[101:110]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[101:110]^2))
 sprintf("El error en 2006-2015 de este modelo para metales básicos es: %s", error2)
-error3 <- mean(mod_regresion$residuals[111:125]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[111:125]^2))
 sprintf("El error en 2016-2030 de este modelo para metales básicos es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Metales básicos', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+#===========================================
 #Minería y Productos metálicos, equipo eléctrico y de transporte
+#===========================================
 sector <-datos[rama=='Minería y Productos metálicos, equipo eléctrico y de transporte',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_mineria.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_mineria.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_mineria.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[126:150], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_min.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados para minería y productos metálicos, equipo eléctrico y de transporte", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[126:135]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[126:135]^2))
 sprintf("El error en 2006-2015 de este modelo para minería y productos metálicos es: %s", error2)
-error3 <- mean(mod_regresion$residuals[136:150]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[136:150]^2))
 sprintf("El error en 2016-2030 de este modelo para minería y productos metálicos es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Minería y prod. metálicos', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+#===========================================
 #Productos de minerales no metálicos
+#===========================================
 sector <-datos[rama=='Productos de minerales no metálicos',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_nometal.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_nometal.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_nometal.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[151:175], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_nomet.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para productos de minerales no metálicos", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[151:160]^2)
+
+#Resultados
+error2 <- sqrt(mean(mod_regresion$residuals[151:160]^2))
 sprintf("El error en 2006-2015 de este modelo para productos de minerales no metálicos es: %s", error2)
-error3 <- mean(mod_regresion$residuals[161:175]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[161:175]^2))
 sprintf("El error en 2016-2030 de este modelo para productos de minerales no metálicos es: %s", error3)
 accuracy(mod_regresion)
 
+tabla_res <-data.frame("Sector"='Productos de minerales no metálicos', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
 #Química
+#===========================================
 sector <-datos[rama=='Química',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_quimica.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_quimica.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_quimica.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[176:200], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_quim.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para Química", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[176:185]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[176:185]^2))
 sprintf("El error en 2006-2015 de este modelo para química es: %s", error2)
-error3 <- mean(mod_regresion$residuals[186:200]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[186:200]^2))
 sprintf("El error en 2016-2030 de este modelo para química es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Química', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+#===========================================
 #Textil
+#===========================================
 sector <-datos[rama=='Textil',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_textil.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_textil.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_textil.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[201:225], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_textil.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para textil", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[201:210]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[201:210]^2))
 sprintf("El error en 2006-2015 de este modelo para textil es: %s", error2)
-error3 <- mean(mod_regresion$residuals[211:225]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[211:225]^2))
 sprintf("El error en 2016-2030 de este modelo para textil es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Textil', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
+#===========================================
 #Resto
+#===========================================
 sector <-datos[rama=='Resto',]
+
+#Boxplot del subsector
+png("./output/graphs/exploratorio/box_plot_resto.png")
+boxplot(sector[,-c(1,2)], main="Boxplot de variables estandarizadas en subsector", col="skyblue")
+dev.off()
+
+#RELACIONES ENTRE VARIABLES
+#La demanda historica es una variable que tiene una relacion directa con la demanda. 
+png("./output/graphs/exploratorio/scatter_resto.png")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+dev.off()
+
+#CORRELACIONES
+M <- cor((sector[-1,-c(1, 2)]))
+png("./output/graphs/exploratorio/corplot_resto.png")
+corrplot(M, method="number", type="upper")
+dev.off()
+
+#Resultados
 real <- ts(sector$demanda, start=2006, end=2030, frequency=1)
 pred <- ts(mod_regresion$fitted[226:250], start=2006, end=2030, frequency=1)
 png("./output/graphs/pred_res_resto.png")
 ts.plot(real, pred, gpars = list(col = c("blue", "red"), ylab="Demanda de gas natural"), xlab="Tiempo", main="Resultados del modelo para resto de subsectores", type="o")
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
-error <- mse(mod_regresion)
-sprintf("El error de este modelo es: %s", error)
-error2 <- mean(mod_regresion$residuals[226:235]^2)
+
+error2 <- sqrt(mean(mod_regresion$residuals[226:235]^2))
 sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
-error3 <- mean(mod_regresion$residuals[236:250]^2)
+error3 <- sqrt(mean(mod_regresion$residuals[236:250]^2))
 sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 accuracy(mod_regresion)
+tabla_res <-data.frame("Sector"='Resto', "Modelo"='Mineria', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
 
-################################
+########################################################
+########################################################
 # Modelo ARIMA
-################################
-#--------------Alimentos------------
+########################################################
+########################################################
+
+#===========================================
+#Alimentos
+#===========================================
 #Serie tiempo
 sector <-datos[rama=='Alimentos',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
@@ -286,12 +549,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("IMP", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#--------------------Celulosa y papel----------------   
+tabla_res <-data.frame("Sector"='Alimentos', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Celulosa y papel
+#===========================================
 #Serie tiempo
 sector <-datos[rama=='Celulosa y papel',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
@@ -315,12 +583,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("IMP", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#-------------------Cemento y vidrio------------------
+tabla_res <-data.frame("Sector"='Celulosa y papel', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Cemento y vidrio
+#===========================================
 sector <-datos[rama=='Cemento y vidrio',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_cemento.png")
@@ -343,12 +616,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(mod_regresion)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#------------------Cerveza y malta------------------------
+tabla_res <-data.frame("Sector"='Cemento y vidrio', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Cerveza y malta
+#===========================================
 sector <-datos[rama=='Cerveza y malta',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_cerveza.png")
@@ -371,11 +649,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
-#------------------Metales básicos-----------------------
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
+
+tabla_res <-data.frame("Sector"='Cerveza y malta', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Metales básicos
+#===========================================
 sector <-datos[rama=='Metales básicos',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_metales.png")
@@ -398,12 +682,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#------------------------Minería y Productos metálicos, equipo eléctrico y de transporte--------------------
+tabla_res <-data.frame("Sector"='Metales básicos', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Minería y Productos metálicos, equipo eléctrico y de transporte
+#===========================================
 sector <-datos[rama=='Minería y Productos metálicos, equipo eléctrico y de transporte',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_mineria.png")
@@ -426,12 +715,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#--------------------Productos de minerales no metálicos-------------------
+tabla_res <-data.frame("Sector"='Minería y prod. metálicos', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Productos de minerales no metálicos
+#===========================================
 sector <-datos[rama=='Productos de minerales no metálicos',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_nometal.png")
@@ -459,7 +753,17 @@ error <- mse(fit)
 sprintf("El error cuadrático medio de este modelo es: %s", error)
 accuracy(fit)
 
-#-----------------------------------------Química------------------------------------
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
+
+tabla_res <-data.frame("Sector"='Productos de minerales no metálicos', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Química
+#===========================================
 sector <-datos[rama=='Química',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_quimica.png")
@@ -482,12 +786,18 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#-----------------------------------------Textil----------------------------------------
+tabla_res <-data.frame("Sector"='Química', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+
+#===========================================
+#Textil
+#===========================================
 sector <-datos[rama=='Textil',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_textil.png")
@@ -510,12 +820,17 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
-#------------------------------Resto---------------------------------
+tabla_res <-data.frame("Sector"='Textil', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+#===========================================
+#Resto
+#===========================================
 sector <-datos[rama=='Resto',]
 sector <- ts(sector$demanda, start = 2005, frequency = 1 )
 png("./output/graphs/exploratorio/serie_demanda_resto.png")
@@ -538,8 +853,13 @@ ts.plot(fit$x, fitted(fit), gpars = list(col = c("blue", "red"), ylab="Demanda d
 legend("bottomright", legend = c("real", "modelo"), col = c("blue", "red"), lty = 1)
 dev.off()
 
-#Error
-error <- mse(fit)
-sprintf("El error cuadrático medio de este modelo es: %s", error)
-accuracy(fit)
+error2 <- sqrt(mean(fit$residuals[1:15]^2))
+sprintf("El error en 2006-2015 de este modelo para el resto de subsectores es: %s", error2)
+error3 <- sqrt(mean(fit$residuals[16:26]^2))
+sprintf("El error en 2016-2030 de este modelo para el resto de subsectores es: %s", error3)
 
+tabla_res <-data.frame("Sector"='Resto', "Modelo"='ARIMA', "RMSE_2006-2030"=error2+error3, "RMSE_2006-2015"=error2, "RMSE_2016-2030"=error3)
+tabla_res_tot <- rbind(tabla_res_tot, tabla_res)
+
+tabla_res_tot <- tabla_res_tot[order(tabla_res_tot[,1]),]
+tabla_res_tot
