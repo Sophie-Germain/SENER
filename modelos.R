@@ -146,12 +146,12 @@ dev.off()
 
 #RELACIONES ENTRE VARIABLES
 #La demanda historica es una variable que tiene una relacion directa con la demanda. 
-png("./output/graphs/exploratorio/scatter_quimica.png")
+png("./output/graphs/exploratorio/scatter_alim.png")
 pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
 dev.off()
 #CORRELACIONES
 M <- cor((sector[-1,-c(1, 2)]))
-png("./output/graphs/exploratorio/corplot_quimica.png")
+png("./output/graphs/exploratorio/corplot_alim.png")
 corrplot(M, method="number", type="upper")
 dev.off()
 
@@ -186,7 +186,7 @@ dev.off()
 #RELACIONES ENTRE VARIABLES
 #La demanda historica es una variable que tiene una relacion directa con la demanda. 
 png("./output/graphs/exploratorio/scatter_papel.png")
-pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=datos, main="Relaciones entre las variables", col="blue")
+pairs(~demanda+demanda.lag+precio_gas+precio_combu+pib, data=sector, main="Relaciones entre las variables", col="blue")
 dev.off()
 
 #CORRELACIONES
